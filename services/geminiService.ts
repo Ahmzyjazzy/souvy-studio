@@ -119,5 +119,49 @@ export const geminiService = {
       console.error("Failed to generate creative content", e);
       return null;
     }
+  },
+
+  /**
+   * Verifies a payment receipt image against expected order data.
+   */
+  async verifyReceipt(receiptBase64: string, expected: { amount: number, reference: string, accountName: string }) {
+    const prompt = `
+      Analyze this bank transfer receipt. 
+      Verify if the following details match the receipt:
+      1. Amount: ${expected.amount} (Note: check if it matches the total amount on the receipt).
+      2. Transaction Reference/Remark: "${expected.reference}" (Look for this exact string in the notes, remarks, or reference section).
+      3. Recipient Account Name: "${expected.accountName}".
+
+      Return a JSON response with:
+      - verified (boolean): true if ALL three match reasonably well.
+      - reason (string): Explain what matched or what didn't match. Be concise.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: {
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: 'image/jpeg', data: receiptBase64 } }
+          ]
+        },
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              verified: { type: Type.BOOLEAN },
+              reason: { type: Type.STRING }
+            },
+            required: ['verified', 'reason']
+          }
+        }
+      });
+      return JSON.parse(response.text || '{"verified": false, "reason": "No response"}');
+    } catch (e) {
+      console.error("Receipt verification failed:", e);
+      return { verified: false, reason: "Error processing the receipt analysis." };
+    }
   }
 };

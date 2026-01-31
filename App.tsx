@@ -7,11 +7,12 @@ import Cart from './components/Cart';
 import SouvyEdit from './components/SouvyEdit';
 import HowItWorks from './components/HowItWorks';
 import Footer from './components/Footer';
+import CheckoutSimulation from './components/CheckoutSimulation';
 import { Product, CartItem, Customization } from './types';
 import localforage from 'localforage';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'landing' | 'catalog' | 'cart'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'catalog' | 'cart' | 'checkout'>('landing');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [activeEditingItem, setActiveEditingItem] = useState<CartItem | null>(null);
 
@@ -50,7 +51,7 @@ const App: React.FC = () => {
     setActiveEditingItem(null);
   };
 
-  const navigateAndScroll = (view: 'landing' | 'catalog' | 'cart', targetId?: string) => {
+  const navigateAndScroll = (view: 'landing' | 'catalog' | 'cart' | 'checkout', targetId?: string) => {
     setCurrentView(view);
     if (targetId) {
       setTimeout(() => {
@@ -61,6 +62,8 @@ const App: React.FC = () => {
       }, 100);
     }
   };
+
+  const totalCartAmount = cartItems.reduce((sum, item) => sum + item.product.price, 0);
 
   return (
     <div className="min-h-screen bg-white">
@@ -114,15 +117,26 @@ const App: React.FC = () => {
 
         {currentView === 'catalog' && <Catalog onAddToCart={handleAddToCart} />}
 
-        {currentView === 'cart' && (
+        {(currentView === 'cart' || currentView === 'checkout') && (
           <Cart 
             items={cartItems} 
             onCustomize={setActiveEditingItem} 
             onRemove={handleRemoveFromCart}
-            onCheckout={() => alert('Order confirmed! Our production team is reviewing your bespoke specs.')}
+            onCheckout={() => setCurrentView('checkout')}
           />
         )}
       </main>
+
+      {currentView === 'checkout' && (
+        <CheckoutSimulation 
+          totalAmount={totalCartAmount}
+          onComplete={() => {
+            setCartItems([]);
+            setCurrentView('landing');
+          }}
+          onCancel={() => setCurrentView('cart')}
+        />
+      )}
 
       {activeEditingItem && (
         <SouvyEdit 
